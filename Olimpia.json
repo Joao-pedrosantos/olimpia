@@ -1,0 +1,550 @@
+{
+  "name": "Olimpia",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "9d041c6a-5ea6-4998-b140-8b0d1c2e5b86",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e635f28a-4284-4d6b-a617-4d04cbfe06f2",
+      "name": "Webhook",
+      "webhookId": "9d041c6a-5ea6-4998-b140-8b0d1c2e5b86"
+    },
+    {
+      "parameters": {
+        "url": "=https://yahoo-finance15.p.rapidapi.com/api/v1/markets/search?search={{ $json.empresa }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-host",
+              "value": "yahoo-finance15.p.rapidapi.com"
+            },
+            {
+              "name": "x-rapidapi-key",
+              "value": "ec238368bbmsh3fd1b29e1794db2p181cd3jsn8e61e25e9ff3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        740,
+        0
+      ],
+      "id": "80880a2b-4ed0-4333-aff0-e9646d3e1149",
+      "name": "Stocks"
+    },
+    {
+      "parameters": {
+        "url": "=https://pt.wikipedia.org/api/rest_v1/page/summary/{{$json[\"empresa\"]}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        620,
+        -160
+      ],
+      "id": "3f430242-0e0c-4dbb-869f-44f29ef47e31",
+      "name": "Summary"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "11c52439-0a62-4112-946b-ba1bce582c80",
+              "name": "empresa",
+              "value": "={{ $json.query.empresa }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "id": "b337dcdd-07e7-4f2b-b829-b48394a6aa36",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "=https://gnews.io/api/v4/search?q={{$json[\"empresa\"]}}&lang=pt&token=ecdefa47fc49a728cc6a17028a8b710b",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        620,
+        200
+      ],
+      "id": "6f98b903-e566-4332-8e4a-52cb99b4b917",
+      "name": "News"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { \n    news: $json[\"articles\"]\n            .slice(0,3)\n            .map(a => ({\n              title: a.title,\n              desription: a.description,\n              url: a.url,\n              source: a.source.name,\n              publishedAt: a.publishedAt\n            }))\n   } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        840,
+        200
+      ],
+      "id": "9582181e-9855-4c90-a588-6e9ca4096ca6",
+      "name": "News - Done"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst tickers = items[0].json.body\n  .filter(o => o.symbol.endsWith('.SA'))   // só .SA\n  .map(o => o.symbol.replace('.SA', ''))   // remove o sufixo\n  .slice(0, 15);                           // limite do plano free\n\n// 2. Para cada ticker cria um item separado\nreturn tickers.map(t => ({ json: { ticker: t } }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "id": "9272ccce-069d-4b2a-9d04-bbc2eda66ffb",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1140,
+        60
+      ],
+      "id": "e8c73bcf-9098-4b10-8365-952367afc59d",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "jsCode": "const entry = items[0].json;\n\nreturn [{\n  json: {\n    title: entry.title,\n    extract: entry.extract,\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        -160
+      ],
+      "id": "9e5019f9-efff-48b3-9765-b70f86fb7cc0",
+      "name": "Summary - Complete"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1660,
+        -20
+      ],
+      "id": "c8808f34-1f5e-4f39-b97d-21821e5dc675",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const httpRequestData = $(\"brapi\").all();\n\nconst extractedData = httpRequestData.map((item) => {\n  const result = item?.json?.results[0];\n  return {\n    symbol: result?.symbol,\n    price: result?.regularMarketPrice,\n    change: result?.regularMarketChange,\n    changePercent: result?.regularMarketChangePercent,\n    previousClose: result?.regularMarketPreviousClose,\n    marketCap: result?.marketCap,\n  };\n});\n\nreturn extractedData;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        -20
+      ],
+      "id": "85b3fdd8-67ef-453e-8c72-f96ffb1bb1bf",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "url": "=https://brapi.dev/api/quote/{{$json.ticker}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer iX2kjmTPUmrvwcfokrjEzj"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        240
+      ],
+      "id": "c3dcf106-e1b1-40bc-b251-68a6268f2553",
+      "name": "brapi"
+    },
+    {
+      "parameters": {
+        "instructions": "Get all of the data in the input and transform it into a single text so that i can put it into a google docs file ",
+        "codeGeneratedForPrompt": "Get all of the data in the input and transform it into a single text so that i can put it into a google docs file ",
+        "jsCode": "const items = $input.all();\nconst text = items.map((item) => JSON.stringify(item.json)).join(\"\\n\");\n\nreturn { text };\n"
+      },
+      "type": "n8n-nodes-base.aiTransform",
+      "typeVersion": 1,
+      "position": [
+        1880,
+        -20
+      ],
+      "id": "1ddf8846-ff92-4f72-b296-55faadd0c00b",
+      "name": "AI Transform"
+    },
+    {
+      "parameters": {
+        "folderId": "1MKIL_Dn5uNSxSsEJP40lYXxNZCaR1wGB",
+        "title": "={{ $json.empresa }}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        460,
+        340
+      ],
+      "id": "b5bd709e-c8bd-4cc7-9d25-7638c3d6ea6c",
+      "name": "Google Docs",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "QJOv5Ywp4dIEn00G",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { \"id\": $json.id } }}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1300,
+        500
+      ],
+      "id": "9b3b6e42-2246-4a8f-8efc-abd978bd6dd1",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $json.message.content }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        3040,
+        100
+      ],
+      "id": "aabff441-960b-4667-9b1f-247c154ceb9c",
+      "name": "Google Writer",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "QJOv5Ywp4dIEn00G",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Transforme o seguinte conteúdo JSON em um texto legível, organizado e pronto para ser colocado em um documento do Google Docs. Use formatação simples com espaçamento e emojis para facilitar a leitura.\n\nJSON:\n{{ $json[\"text\"] }}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2200,
+        100
+      ],
+      "id": "1747b738-f2af-4100-8929-63509944cde1",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "FEoct0LMVYGia27W",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2640,
+        260
+      ],
+      "id": "50211e1c-12a9-4513-b0d3-e38969bb65fe",
+      "name": "Merge1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stocks": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Stocks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Docs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "News": {
+      "main": [
+        [
+          {
+            "node": "News - Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "brapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary": {
+      "main": [
+        [
+          {
+            "node": "Summary - Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary - Complete": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "News - Done": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Transform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "brapi": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Transform": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Docs": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Google Writer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b7e5717e-0f55-40eb-a8a9-5ad0953c1406",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "923adb328d159d217b6f0d7bd3beb621e3153e822c52be06c8b8a44827d292f8"
+  },
+  "id": "8JSwgfI3vSFSha7w",
+  "tags": []
+}

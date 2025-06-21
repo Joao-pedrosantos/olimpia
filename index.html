@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>🔎 Pesquisa de Empresa</title>
+
+  <!-- CSS externo -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>🔎 Pesquisar Empresa</h1>
+
+    <form id="empresaForm" class="card">
+      <label for="empresa">Nome da empresa</label>
+      <input
+        type="text"
+        id="empresa"
+        name="empresa"
+        placeholder="Ex.: Petrobras"
+        required
+      />
+      <button type="submit">Pesquisar</button>
+      <p id="status" class="status"></p>
+    </form>
+  </main>
+
+  <!-- JS externo -->
+  <script src="script.js"></script>
+</body>
+</html>
