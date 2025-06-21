@@ -28,7 +28,7 @@
             },
             {
               "name": "x-rapidapi-key",
-              "value": "ec238368bbmsh3fd1b29e1794db2p181cd3jsn8e61e25e9ff3"
+              "value": "key"
             }
           ]
         },
@@ -183,7 +183,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer iX2kjmTPUmrvwcfokrjEzj"
+              "value": "Bearer key"
             }
           ]
         },
